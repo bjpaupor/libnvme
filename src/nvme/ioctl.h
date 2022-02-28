@@ -2876,7 +2876,8 @@ int nvme_get_features_iocs_profile(int fd, enum nvme_get_features_sel sel,
  * @pi:		Protection information type
  * @pil:	Protection information location (beginning or end), true if end
  * @ses:	Secure erase settings
- * @lbaf:	Logical block address format
+ * @lbafu:	Logical block address format most significant 2 bits
+ * @lbafl:	Logical block address format least significant 4 bits
  */
 struct nvme_format_nvm_args {
 	__u32 *result;
@@ -2888,7 +2889,8 @@ struct nvme_format_nvm_args {
 	enum nvme_cmd_format_pi pi;
 	enum nvme_cmd_format_pil pil;
 	enum nvme_cmd_format_ses ses;
-	__u8 lbaf;
+	__u8 lbafu;
+	__u8 lbafl;
 } __attribute__((packed, aligned(__alignof__(__u32*))));
 
 /**
@@ -4004,6 +4006,8 @@ int nvme_dsm(struct nvme_dsm_args *args);
  * @lbat:	Logical block application tag
  * @prinfor:	Protection information field for read
  * @prinfow:	Protection information field for write
+ * @stcr:	Storage Tag Check Read
+ * @stcw:	Storage Tag Check Write
  * @dtype:	Directive type
  * @format:	Descriptor format
  */
@@ -4024,6 +4028,8 @@ struct nvme_copy_args {
 	__u16 lbat;
 	__u8 prinfor;
 	__u8 prinfow;
+	int stcr;
+	int stcw;
 	__u8 dtype;
 	__u8 format;
 } __attribute__((packed, aligned(__alignof__(__u64))));

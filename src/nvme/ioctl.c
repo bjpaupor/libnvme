@@ -262,16 +262,18 @@ enum nvme_cmd_dword_fields {
 	NVME_VIRT_MGMT_CDW10_RT_MASK				= 0x7,
 	NVME_VIRT_MGMT_CDW10_CNTLID_MASK			= 0xffff,
 	NVME_VIRT_MGMT_CDW11_NR_MASK				= 0xffff,
-	NVME_FORMAT_CDW10_LBAF_SHIFT				= 0,
+	NVME_FORMAT_CDW10_LBAFL_SHIFT				= 0,
 	NVME_FORMAT_CDW10_MSET_SHIFT				= 4,
 	NVME_FORMAT_CDW10_PI_SHIFT				= 5,
 	NVME_FORMAT_CDW10_PIL_SHIFT				= 8,
 	NVME_FORMAT_CDW10_SES_SHIFT				= 9,
-	NVME_FORMAT_CDW10_LBAF_MASK				= 0xf,
+	NVME_FORMAT_CDW10_LBAFU_SHIFT				= 12,
+	NVME_FORMAT_CDW10_LBAFL_MASK				= 0xf,
 	NVME_FORMAT_CDW10_MSET_MASK				= 0x1,
 	NVME_FORMAT_CDW10_PI_MASK				= 0x7,
 	NVME_FORMAT_CDW10_PIL_MASK				= 0x1,
 	NVME_FORMAT_CDW10_SES_MASK				= 0x7,
+	NVME_FORMAT_CDW10_LBAFU_MASK				= 0x3,
 	NVME_SANITIZE_CDW10_SANACT_SHIFT			= 0,
 	NVME_SANITIZE_CDW10_AUSE_SHIFT				= 3,
 	NVME_SANITIZE_CDW10_OWPASS_SHIFT			= 4,
@@ -442,7 +444,6 @@ int nvme_set_features(struct nvme_set_features_args *args)
 		.cdw10		= cdw10,
 		.cdw11		= args->cdw11,
 		.cdw12		= args->cdw12,
-		.cdw13		= args->cdw13,
 		.cdw14		= cdw14,
 		.cdw15		= args->cdw15,
 		.timeout_ms	= args->timeout,
@@ -1157,11 +1158,12 @@ int nvme_get_features_iocs_profile(int fd, enum nvme_get_features_sel sel,
 
 int nvme_format_nvm(struct nvme_format_nvm_args *args)
 {
-	__u32 cdw10 = NVME_SET(args->lbaf, FORMAT_CDW10_LBAF) |
+	__u32 cdw10 = NVME_SET(args->lbafl, FORMAT_CDW10_LBAFL) |
 			NVME_SET(args->mset, FORMAT_CDW10_MSET) |
 			NVME_SET(args->pi, FORMAT_CDW10_PI) |
 			NVME_SET(args->pil, FORMAT_CDW10_PIL) |
-			NVME_SET(args->ses, FORMAT_CDW10_SES);
+			NVME_SET(args->ses, FORMAT_CDW10_SES) |
+			NVME_SET(args->lbafu, FORMAT_CDW10_LBAFU);
 
 	struct nvme_passthru_cmd cmd = {
 		.opcode		= nvme_admin_format_nvm,
@@ -1643,6 +1645,7 @@ int nvme_copy(struct nvme_copy_args *args)
 {
 	__u32 cdw12 = ((args->nr - 1) & 0xff) | ((args->format & 0xf) <<  8) |
 		((args->prinfor & 0xf) << 12) | ((args->dtype & 0xf) << 20) |
+		((args->stcw & 0x1) << 24) | ((args->stcr & 0x1) << 25) |
 		((args->prinfow & 0xf) << 26) | ((args->fua & 0x1) << 30) |
 		((args->lr & 0x1) << 31);
 
