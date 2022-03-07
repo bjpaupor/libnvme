@@ -127,13 +127,33 @@ void nvme_init_dsm_range(struct nvme_dsm_range *dsm, __u32 *ctx_attrs,
  * @nlbs:	Number of logical blocks
  * @slbas:	Starting LBA
  * @eilbrts:	Expected initial logical block reference tag
+ * @elbsts:	Expected logical block storage tag
  * @elbatms:	Expected logical block application tag mask
  * @elbats:	Expected logical block application tag
+ * @sts:	Storage tag size
  * @nr:		Number of descriptors to construct
  */
 void nvme_init_copy_range(struct nvme_copy_range *copy, __u16 *nlbs,
-			  __u64 *slbas, __u32 *eilbrts, __u32 *elbatms,
-			  __u32 *elbats, __u16 nr);
+			  __u64 *slbas, __u32 *eilbrts, __u32 *elbsts,
+			  __u32 *elbatms, __u32 *elbats, __u8 sts, __u16 nr);
+
+/**
+ * nvme_init_copy_range() - Constructs a copy range structure
+ * @copy:	Copy range array
+ * @nlbs:	Number of logical blocks
+ * @slbas:	Starting LBA
+ * @eilbrts:	Expected initial logical block reference tag
+ * @elbsts:	Expected logical block storage tag
+ * @elbatms:	Expected logical block application tag mask
+ * @elbats:	Expected logical block application tag
+ * @sts:	Storage tag size
+ * @pif:	Protection information format
+ * @nr:		Number of descriptors to construct
+ */
+void nvme_init_copy_range_f1(struct nvme_copy_range_f1 *copy, __u16 *nlbs,
+			  __u64 *slbas, __u64 *eilbrts, __u64 *elbsts,
+			  __u32 *elbatms, __u32 *elbats, __u8 sts, __u8 pif,
+			  __u16 nr);
 
 /**
  * nvme_get_feature_length() - Retreive the command payload length for a

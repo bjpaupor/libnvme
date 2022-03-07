@@ -1653,7 +1653,6 @@ int nvme_copy(struct nvme_copy_args *args)
 		.opcode         = nvme_cmd_copy,
 		.nsid           = args->nsid,
 		.addr           = (__u64)(uintptr_t)args->copy,
-		.data_len       = args->nr * sizeof(*args->copy),
 		.cdw10          = args->sdlba & 0xffffffff,
 		.cdw11          = args->sdlba >> 32,
 		.cdw12          = cdw12,
@@ -1662,6 +1661,11 @@ int nvme_copy(struct nvme_copy_args *args)
 		.cdw15		= (args->lbatm << 16) | args->lbat,
 		.timeout_ms	= args->timeout,
 	};
+
+	if (args->format == 1)
+		cmd.data_len = args->nr * sizeof(struct nvme_copy_range_f1);
+	else
+		cmd.data_len = args->nr * sizeof(struct nvme_copy_range);
 
 	if (args->args_size < sizeof(*args)) {
 		errno = EINVAL;
