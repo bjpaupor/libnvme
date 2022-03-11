@@ -1586,27 +1586,65 @@ int nvme_io_passthru(int fd, __u8 opcode, __u8 flags, __u16 rsvd,
 		data, metadata_len, metadata, timeout_ms, result);
 }
 
+int nvme_set_var_size_tags(struct nvme_passthru_cmd *cmd, __u8 pif, __u8 sts,
+		__u64 reftag, __u64 storage_tag)
+{
+	__u32 cdw2 = 0, cdw3 = 0, cdw14;
+
+	switch (pif) {
+	// 16b Protection Information
+	case 0:
+		cdw14 = reftag & 0xffffffff;
+		cdw14 |= ((storage_tag << (32 - sts)) & 0xffffffff);
+		break;
+	// 32b Protection Information
+	case 1:
+		cdw14 = reftag & 0xffffffff;
+		cdw3 = reftag >> 32;
+		cdw14 |= ((storage_tag << (80 - sts)) & 0xffff0000);
+		if (sts >= 48)
+			cdw3 |= ((storage_tag >> (sts - 48)) & 0xffffffff);
+		else
+			cdw3 |= ((storage_tag << (48 - sts)) & 0xffffffff);
+		cdw2 = (storage_tag >> (sts - 16)) & 0xffff;
+		break;
+	// 64b Protection Information
+	case 2:
+		cdw14 = reftag & 0xffffffff;
+		cdw3 = (reftag >> 32) & 0xffff;
+		cdw14 |= ((storage_tag << (48 - sts)) & 0xffffffff);
+		if (sts >= 16)
+			cdw3 |= ((storage_tag >> (sts - 16)) & 0xffff);
+		else
+			cdw3 |= ((storage_tag << (16 - sts)) & 0xffff);
+		break;
+	default:
+		perror("Unsupported Protection Information Format");
+		errno = EINVAL;
+		return -1;
+	}
+
+	cmd->cdw2 = cdw2;
+	cmd->cdw3 = cdw3;
+	cmd->cdw14 = cdw14;
+	return 0;
+}
+
 int nvme_io(struct nvme_io_args *args, __u8 opcode)
 {
-	__u32 cdw2  = args->storage_tag & 0xffffffff;
-	__u32 cdw3  = (args->storage_tag >> 32) & 0xffff;
 	__u32 cdw10 = args->slba & 0xffffffff;
 	__u32 cdw11 = args->slba >> 32;
 	__u32 cdw12 = args->nlb | (args->control << 16);
 	__u32 cdw13 = args->dsm | (args->dspec << 16);
-	__u32 cdw14 = args->reftag;
 	__u32 cdw15 = args->apptag | (args->appmask << 16);
 
 	struct nvme_passthru_cmd cmd = {
 		.opcode		= opcode,
 		.nsid		= args->nsid,
-		.cdw2		= cdw2,
-		.cdw3		= cdw3,
 		.cdw10		= cdw10,
 		.cdw11		= cdw11,
 		.cdw12		= cdw12,
 		.cdw13		= cdw13,
-		.cdw14		= cdw14,
 		.cdw15		= cdw15,
 		.data_len	= args->data_len,
 		.metadata_len	= args->metadata_len,
@@ -1614,6 +1652,12 @@ int nvme_io(struct nvme_io_args *args, __u8 opcode)
 		.metadata	= (__u64)(uintptr_t)args->metadata,
 		.timeout_ms	= args->timeout,
 	};
+
+	if (nvme_set_var_size_tags(&cmd, args->pif, args->sts, args->reftag,
+			args->storage_tag)) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (args->args_size < sizeof(*args)) {
 		errno = EINVAL;
@@ -1657,10 +1701,15 @@ int nvme_copy(struct nvme_copy_args *args)
 		.cdw11          = args->sdlba >> 32,
 		.cdw12          = cdw12,
 		.cdw13		= (args->dspec & 0xffff) << 16,
-		.cdw14		= args->ilbrt,
 		.cdw15		= (args->lbatm << 16) | args->lbat,
 		.timeout_ms	= args->timeout,
 	};
+
+	if (nvme_set_var_size_tags(&cmd, args->pif, args->sts, args->ilbrt,
+			args->lbst)) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (args->format == 1)
 		cmd.data_len = args->nr * sizeof(struct nvme_copy_range_f1);

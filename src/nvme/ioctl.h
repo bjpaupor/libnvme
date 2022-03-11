@@ -3809,8 +3809,7 @@ static inline int nvme_flush(int fd, __u32 nsid) {
  * struct nvme_io_args - Arguments for NVMe I/O commands
  * @slba:	Starting logical block
  * @storage_tag: This filed specifies Variable Sized Expected Logical Block
- *		Storage Tag (ELBST) and Expected Logical Block Reference
- *		Tag (ELBRT)
+ *		Storage Tag (ELBST) or Logical Block Storage Tag (LBST)
  * @result:	The command completion result from CQE dword0
  * @data:	Pointer to user address of the data buffer
  * @metadata:	Pointer to user address of the metadata buffer
@@ -3828,11 +3827,16 @@ static inline int nvme_flush(int fd, __u32 nsid) {
  * @appmask:	This field specifies the Application Tag expected value. Used
  *		only if the namespace is formatted to use end-to-end protection
  *		information.
- * @reftag:	This field specifies the Initial Logical Block Reference Tag
- *		expected value. Used only if the namespace is formatted to use
- *		end-to-end protection information.
+ * @reftag:	This field specifies the variable sized Expected Initial
+ * 		Logical Block Reference Tag (EILBRT) or Initial Logical Block
+ * 		Reference Tag (ILBRT). Used only if the namespace is formatted
+ * 		to use end-to-end protection information.
  * @dspec:	Directive specific value
  * @dsm:	Data set management attributes, see &enum nvme_io_dsm_flags
+ * @sts:	Storage tag size in bits, set by namespace Extended LBA Format
+ * @pif:	Protection information format, determines how variable sized
+ * 		storage_tag and reftag are put into dwords 2, 3, and 14. Set by
+ * 		namespace Extended LBA Format.
  */
 struct nvme_io_args {
 	__u64 slba;
@@ -3844,7 +3848,7 @@ struct nvme_io_args {
 	int fd;
 	__u32 timeout;
 	__u32 nsid;
-	__u32 reftag;
+	__u64 reftag;
 	__u32 data_len;
 	__u32 metadata_len;
 	__u16 nlb;
@@ -3853,6 +3857,8 @@ struct nvme_io_args {
 	__u16 appmask;
 	__u16 dspec;
 	__u8 dsm;
+	__u8 sts;
+	__u8 pif;
 } __attribute__((__packed__, aligned(__alignof__(__u64))));
 
 /**
@@ -3998,6 +4004,7 @@ int nvme_dsm(struct nvme_dsm_args *args);
  * @timeout:	Timeout in ms
  * @nsid:	Namespace identifier
  * @ilbrt:	Initial logical block reference tag
+ * @lbst:	Logical block storage tag
  * @lr:		Limited retry
  * @fua:	Force unit access
  * @nr:		Number of ranges
@@ -4010,6 +4017,10 @@ int nvme_dsm(struct nvme_dsm_args *args);
  * @stcw:	Storage Tag Check Write
  * @dtype:	Directive type
  * @format:	Descriptor format
+ * @sts:	Storage tag size in bits, set by namespace Extended LBA Format
+ * @pif:	Protection information format, determines how variable sized
+ * 		storage_tag and reftag are put into dwords 2, 3, and 14. Set by
+ * 		namespace Extended LBA Format.
  */
 struct nvme_copy_args {
 	__u64 sdlba;
@@ -4019,7 +4030,8 @@ struct nvme_copy_args {
 	int fd;
 	__u32 timeout;
 	__u32 nsid;
-	__u32 ilbrt;
+	__u64 ilbrt;
+	__u64 lbst;
 	int lr;
 	int fua;
 	__u16 nr;
@@ -4032,6 +4044,8 @@ struct nvme_copy_args {
 	int stcw;
 	__u8 dtype;
 	__u8 format;
+	__u8 sts;
+	__u8 pif;
 } __attribute__((packed, aligned(__alignof__(__u64))));
 
 /**
