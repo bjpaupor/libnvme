@@ -2876,7 +2876,8 @@ int nvme_get_features_iocs_profile(int fd, enum nvme_get_features_sel sel,
  * @pi:		Protection information type
  * @pil:	Protection information location (beginning or end), true if end
  * @ses:	Secure erase settings
- * @lbaf:	Logical block address format
+ * @lbafu:	Logical block address format most significant 2 bits
+ * @lbafl:	Logical block address format least significant 4 bits
  */
 struct nvme_format_nvm_args {
 	__u32 *result;
@@ -2888,7 +2889,8 @@ struct nvme_format_nvm_args {
 	enum nvme_cmd_format_pi pi;
 	enum nvme_cmd_format_pil pil;
 	enum nvme_cmd_format_ses ses;
-	__u8 lbaf;
+	__u8 lbafu;
+	__u8 lbafl;
 } __attribute__((packed, aligned(__alignof__(__u32*))));
 
 /**
@@ -3807,8 +3809,7 @@ static inline int nvme_flush(int fd, __u32 nsid) {
  * struct nvme_io_args - Arguments for NVMe I/O commands
  * @slba:	Starting logical block
  * @storage_tag: This filed specifies Variable Sized Expected Logical Block
- *		Storage Tag (ELBST) and Expected Logical Block Reference
- *		Tag (ELBRT)
+ *		Storage Tag (ELBST) or Logical Block Storage Tag (LBST)
  * @result:	The command completion result from CQE dword0
  * @data:	Pointer to user address of the data buffer
  * @metadata:	Pointer to user address of the metadata buffer
@@ -3826,11 +3827,16 @@ static inline int nvme_flush(int fd, __u32 nsid) {
  * @appmask:	This field specifies the Application Tag expected value. Used
  *		only if the namespace is formatted to use end-to-end protection
  *		information.
- * @reftag:	This field specifies the Initial Logical Block Reference Tag
- *		expected value. Used only if the namespace is formatted to use
- *		end-to-end protection information.
+ * @reftag:	This field specifies the variable sized Expected Initial
+ * 		Logical Block Reference Tag (EILBRT) or Initial Logical Block
+ * 		Reference Tag (ILBRT). Used only if the namespace is formatted
+ * 		to use end-to-end protection information.
  * @dspec:	Directive specific value
  * @dsm:	Data set management attributes, see &enum nvme_io_dsm_flags
+ * @sts:	Storage tag size in bits, set by namespace Extended LBA Format
+ * @pif:	Protection information format, determines how variable sized
+ * 		storage_tag and reftag are put into dwords 2, 3, and 14. Set by
+ * 		namespace Extended LBA Format.
  */
 struct nvme_io_args {
 	__u64 slba;
@@ -3842,7 +3848,7 @@ struct nvme_io_args {
 	int fd;
 	__u32 timeout;
 	__u32 nsid;
-	__u32 reftag;
+	__u64 reftag;
 	__u32 data_len;
 	__u32 metadata_len;
 	__u16 nlb;
@@ -3851,6 +3857,8 @@ struct nvme_io_args {
 	__u16 appmask;
 	__u16 dspec;
 	__u8 dsm;
+	__u8 sts;
+	__u8 pif;
 } __attribute__((__packed__, aligned(__alignof__(__u64))));
 
 /**
@@ -4015,7 +4023,7 @@ struct nvme_copy_args {
 	int fd;
 	__u32 timeout;
 	__u32 nsid;
-	__u32 ilbrt;
+	__u64 ilbrt;
 	int lr;
 	int fua;
 	__u16 nr;
@@ -4328,7 +4336,7 @@ struct nvme_zns_append_args {
 	int fd;
 	__u32 timeout;
 	__u32 nsid;
-	__u32 ilbrt;
+	__u64 ilbrt;
 	__u32 data_len;
 	__u32 metadata_len;
 	__u16 nlb;
