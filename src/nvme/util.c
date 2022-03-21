@@ -375,18 +375,43 @@ const char *nvme_status_to_string(int status, bool fabrics)
 }
 
 void nvme_init_copy_range(struct nvme_copy_range *copy, __u16 *nlbs,
-			  __u64 *slbas, __u32 *eilbrts, __u32 *elbatms,
-			  __u32 *elbats, __u16 nr)
+			  __u64 *slbas, __u32 *eilbrts, __u32 *elbsts,
+			  __u32 *elbatms, __u32 *elbats, __u8 sts, __u16 nr)
 {
 	int i;
 
 	for (i = 0; i < nr; i++) {
 		copy[i].nlb = cpu_to_le16(nlbs[i]);
 		copy[i].slba = cpu_to_le64(slbas[i]);
-		copy[i].eilbrt = cpu_to_le32(eilbrts[i]);
+		copy[i].elbt = cpu_to_le32(eilbrts[i]);
+		copy[i].elbt |= (cpu_to_le32(elbsts[i]) << (32 - sts));
 		copy[i].elbatm = cpu_to_le16(elbatms[i]);
 		copy[i].elbat = cpu_to_le16(elbats[i]);
 	}
+}
+
+void nvme_init_copy_range_f1(struct nvme_copy_range_f1 *copy, __u16 *nlbs,
+			  __u64 *slbas, __u64 *eilbrts, __u64 *elbsts,
+			  __u32 *elbatms, __u32 *elbats, __u8 sts, __u8 pif,
+			  __u16 nr)
+{
+	int i;
+
+	for (i = 0; i < nr; i++) {
+		copy[i].nlb = cpu_to_le16(nlbs[i]);
+		copy[i].slba = cpu_to_le64(slbas[i]);
+		copy[i].elbt[2] = cpu_to_le64(eilbrts[i]);
+
+		if (pif == 1)
+			copy[i].elbt[0] |= 
+			 (cpu_to_le64(elbsts[i]) << (64 - sts));
+		else if (pif == 2)
+			copy[i].elbt[2] |= 
+			 (cpu_to_le64(elbsts[i]) << (48 - sts));
+
+		copy[i].elbatm = cpu_to_le16(elbatms[i]);
+		copy[i].elbat = cpu_to_le16(elbats[i]);
+	}  
 }
 
 void nvme_init_dsm_range(struct nvme_dsm_range *dsm, __u32 *ctx_attrs,
